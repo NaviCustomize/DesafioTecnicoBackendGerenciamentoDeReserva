@@ -14,35 +14,77 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             _dbConnection = dbConnection;
         }
 
-        public async Task<IEnumerable<Hotel>> ObterTodosAsync()
-        {
-            var sql = "select * from Hoteis";
-            var resultado = await _dbConnection.QueryAsync<Hotel>(sql);
-            return resultado.ToList();
-        }
-
         public async Task<Hotel?> ObterPorIdAsync(long id)
         {
-            var sql = "select * from Hoteis where Id = @Id";
-            return await _dbConnection.QueryFirstOrDefaultAsync<Hotel?>(sql, new { Id = id });
+            const string sql = """
+            SELECT
+                id,
+                nome,
+                localizacao,
+                descricao
+            FROM hoteis
+            WHERE id = @Id;
+            """;
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<Hotel>(
+                sql,
+                new { Id = id });
         }
 
-        public async Task AdicionarAsync(Hotel hotel)
+        public async Task<IEnumerable<Hotel>> ObterTodosAsync()
         {
-            var sql = "insert into Hoteis (Nome, Localizacao, PrecoPorNoite, QtdQuartos, Descricao) values (@Nome, @Localizacao, @PrecoPorNoite, @QtdQuartos, @Descricao)";
-            await _dbConnection.ExecuteAsync(sql, hotel);
+            const string sql = """
+            SELECT
+                id,
+                nome,
+                localizacao,
+                descricao
+            FROM hoteis
+            ORDER BY id;
+            """;
+
+            return await _dbConnection.QueryAsync<Hotel>(sql);
+        }
+
+        public async Task<long> AdicionarAsync(Hotel hotel)
+        {
+            const string sql = """
+            INSERT INTO hoteis
+                (nome, localizacao, descricao)
+            VALUES
+                (@Nome, @Localizacao, @Descricao)
+            RETURNING id;
+            """;
+
+            return await _dbConnection.ExecuteScalarAsync<long>(
+                sql,
+                hotel);
         }
 
         public async Task AtualizarAsync(Hotel hotel)
         {
-            var sql = "update Hoteis set Nome = @Nome, Localizacao = @Localizacao, PrecoPorNoite = @PrecoPorNoite, QtdQuartos = @QtdQuartos, Descricao = @Descricao where Id = @Id";
+            const string sql = """
+            UPDATE hoteis
+            SET
+                nome = @Nome,
+                localizacao = @Localizacao,
+                descricao = @Descricao
+            WHERE id = @Id;
+            """;
+
             await _dbConnection.ExecuteAsync(sql, hotel);
         }
 
         public async Task DeletarAsync(long id)
         {
-            var sql = "delete from Hoteis where Id = @Id";
-            await _dbConnection.ExecuteAsync(sql, new { Id = id });
+            const string sql = """
+            DELETE FROM hoteis
+            WHERE id = @Id;
+            """;
+
+            await _dbConnection.ExecuteAsync(
+                sql,
+                new { Id = id });
         }
     }
 }

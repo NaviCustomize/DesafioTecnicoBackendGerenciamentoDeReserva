@@ -2,7 +2,6 @@
 using SistemaGerenciamentoDeReserva.Domain.Entity;
 using SistemaGerenciamentoDeReserva.Domain.Interfaces;
 using System.Data;
-using System.Data.Common;
 
 namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
 {
@@ -14,40 +13,94 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         {
             _dbConnection = dbConnection;
         }
-        //lembrar de nao colocar como public por conta do IUsuarioRepository
-        async Task<Usuario> IUsuarioRepository.BuscarPorId(long id)
+
+        public async Task<Usuario?> ObterPorIdAsync(long id)
         {
-            var sql = "select * from Usuarios where Id = @Id";
+            const string sql =
+                """
+            SELECT id, nome, email, senha_hash AS SenhaHash,
+            CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS ROLE
+            FROM usuarios
+            WHERE id = @Id;
+            """;
+
             return await _dbConnection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Id = id });
         }
 
-        async Task<List<Usuario>> IUsuarioRepository.ListarUsuarios()
+        public async Task<IEnumerable<Usuario>> ObterTodosAsync()
         {
-            var sql = " select * from Usuarios ";
-            return (await _dbConnection.QueryAsync<Usuario>(sql)).ToList();
+            const string sql =
+                """
+            SELECT id, nome, email, senha_hash AS SenhaHash,
+            CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS ROLE
+            FROM usuarios
+            ORDER BY id;
+            """;
+
+            return await _dbConnection.QueryAsync<Usuario>(sql);
         }
 
-        async Task IUsuarioRepository.Adicionar(Usuario usuario)
+        public async Task<long> AdicionarAsync(Usuario usuario)
         {
-            var sql = " insert into Usuarios (Nome, Email, Senha) values (@Nome, @Email, @Senha) ";
-            await _dbConnection.ExecuteAsync(sql, usuario);
+            const string sql =
+                """
+            INSERT INTO usuarios (nome, email, senha_hash, role)
+            VALUES (@Nome, @Email, @SenhaHash, @Role)
+            RETURNING id;
+            """;
+
+            return await _dbConnection.ExecuteScalarAsync<long>(sql, new
+            {
+                usuario.Nome,
+                usuario.Email,
+                usuario.SenhaHash,
+                Role = usuario.Role.ToString()
+            });
         }
 
-        async Task IUsuarioRepository.Atualizar(Usuario usuario)
+        public async Task AtualizarAsync(Usuario usuario)
         {
-            var sql = "update Usuarios set Nome = @Nome, Email = @Email, Senha = @Senha where Id = @Id" ;
-            await _dbConnection.ExecuteAsync(sql, usuario);
+            const string sql =
+                """
+            UPDATE usuarios SET
+            nome = @Nome,
+            email = @Email,
+            senha_hash = @SenhaHash,
+            role = @Role
+            WHERE id = @Id;
+            """;
+
+            await _dbConnection.ExecuteAsync(sql, new
+            {
+                usuario.Id,
+                usuario.Nome,
+                usuario.Email,
+                usuario.SenhaHash,
+                Role = usuario.Role.ToString()
+            });
         }
 
-        async Task IUsuarioRepository.Deletar(long id)
+        public async Task DeletarAsync(long id)
         {
-            var sql = "delete from Usuarios where Id = @Id";
+            const string sql =
+                """
+            DELETE FROM usuarios
+            WHERE id = @Id;
+            """;
+
             await _dbConnection.ExecuteAsync(sql, new { Id = id });
         }
 
-        async Task<Usuario> IUsuarioRepository.BuscarPorEmail(string email)
+        public async Task<Usuario?> ObterPorEmailAsync(string email)
         {
-            var sql = "select * from Usuarios where Email = @Email";
+            const string sql =
+                """
+            SELECT id, nome, email, senha_hash AS SenhaHash,
+            CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS Role
+            FROM usuarios
+            WHERE email = @Email;
+            """;
+
             return await _dbConnection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Email = email });
         }
     }

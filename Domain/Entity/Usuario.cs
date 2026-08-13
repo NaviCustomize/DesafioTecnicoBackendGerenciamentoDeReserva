@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using SistemaGerenciamentoDeReserva.Domain.Enums;
 
 namespace SistemaGerenciamentoDeReserva.Domain.Entity
 {
@@ -10,15 +9,18 @@ namespace SistemaGerenciamentoDeReserva.Domain.Entity
 
         public string Email { get; set; } = string.Empty;
 
-        public string Senha { get; set; } = string.Empty;
+        public string SenhaHash { get; set; } = string.Empty;
+
+        public RoleUsuario Role { get; set; }
 
         public Usuario() { }
 
-        public Usuario(string nome, string email, string senha)
+        public Usuario(string nome, string email, string senhaHash, RoleUsuario role)
         {
             Nome = nome;
             Email = email;
-            Senha = senha;
+            SenhaHash = senhaHash;
+            Role = role;
         }
     }
 

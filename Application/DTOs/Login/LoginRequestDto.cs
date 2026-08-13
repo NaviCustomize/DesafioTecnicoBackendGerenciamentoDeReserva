@@ -1,4 +1,4 @@
-﻿namespace SistemaGerenciamentoDeReserva.Application.DTOs
+﻿namespace SistemaGerenciamentoDeReserva.Application.DTOs.Login
 {
     public record LoginRequestDto(string Email, string Senha);
     

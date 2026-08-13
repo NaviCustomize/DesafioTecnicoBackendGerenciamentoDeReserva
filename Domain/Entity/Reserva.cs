@@ -13,17 +13,17 @@ namespace SistemaGerenciamentoDeReserva.Domain.Entity
 
         public long UsuarioId { get; set; }
 
-        public long HotelId { get; set; }
+        public long QuartoId { get; set; }
 
         public Reserva() { }
 
-        public Reserva(DateTime dataCheckIn, DateTime dataCheckOut, StatusReserva status, long usuarioId, long hotelId)
+        public Reserva(DateTime dataCheckIn, DateTime dataCheckOut, StatusReserva status, long usuarioId, long quartoId)
         {
             DataCheckIn = dataCheckIn;
             DataCheckOut = dataCheckOut;
             Status = status;
             UsuarioId = usuarioId;
-            HotelId = hotelId;
+            QuartoId = quartoId;
         }
     }
 }

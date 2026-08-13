@@ -4,10 +4,22 @@ namespace SistemaGerenciamentoDeReserva.Domain.Interfaces
 {
     public interface IReservaRepository
     {
-        Task<IEnumerable<Reserva>> ObterTodasAsync();//metodo que vai retornar uma lista de Oj do tipo reserva
         Task<Reserva?> ObterPorIdAsync(long id);
-        Task AdicionarAsync(Reserva reserva);
+
+        Task<IEnumerable<Reserva>> ObterTodosAsync();
+
+        Task<IEnumerable<Reserva>> ObterPorUsuarioAsync(long usuarioId);
+
+        Task<bool> ExisteConflitoAsync(
+            long quartoId,
+            DateTime dataCheckIn,
+            DateTime dataCheckOut,
+            long? reservaId = null);
+
+        Task<long> AdicionarAsync(Reserva reserva);
+
         Task AtualizarAsync(Reserva reserva);
+
         Task DeletarAsync(long id);
     }
 }

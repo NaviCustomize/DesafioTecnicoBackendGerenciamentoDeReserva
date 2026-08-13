@@ -1,44 +1,43 @@
-﻿using SistemaGerenciamentoDeReserva.Domain.Entity;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using SistemaGerenciamentoDeReserva.Domain.Entity;
+using SistemaGerenciamentoDeReserva.Domain.Interfaces;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.IdentityModel.Tokens;
 
 namespace SistemaGerenciamentoDeReserva.Application.Services
 {
     public class AuthService
     {
-        private readonly IConfiguration _configuration;
+        private readonly IUsuarioRepository _usuarioRepository;
+        private readonly ISenhaHasher _senhaHasher;
+        private readonly IJwtService _jwtService;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(
+            IUsuarioRepository usuarioRepository,
+            ISenhaHasher senhaHasher,
+            IJwtService jwtService)
         {
-            _configuration = configuration;
+            _usuarioRepository = usuarioRepository;
+            _senhaHasher = senhaHasher;
+            _jwtService = jwtService;
         }
 
-        public string GerarToken(Usuario usuario)
+        public async Task<string> LoginAsync(string email,string senha)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
+            var usuario = await _usuarioRepository.ObterPorEmailAsync(email);
 
-            var secretKey = _configuration["JwtSettings:Secret"];
-            var key = Encoding.ASCII.GetBytes(secretKey!);
+            if (usuario is null)
+                throw new UnauthorizedAccessException("Email ou senha inválidos.");
 
-            var expireMinutes = Convert.ToDouble(_configuration["JwtSettings:ExpireMinutes"] ?? "60");
+            var senhaValida = _senhaHasher.Verify(senha,usuario.SenhaHash);
 
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                new Claim(ClaimTypes.Email, usuario.Email)
-            }),
-                Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
-                Issuer = _configuration["JwtSettings:Issuer"],
-                Audience = _configuration["JwtSettings:Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
+            if (!senhaValida)
+                throw new UnauthorizedAccessException(
+                    "Email ou senha inválidos.");
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            return _jwtService.GerarToken(usuario);
         }
     }
 }
