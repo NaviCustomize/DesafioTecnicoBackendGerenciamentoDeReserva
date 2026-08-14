@@ -64,6 +64,26 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
             return Ok(reserva);
         }
 
+        [HttpGet("minhas")]
+        public async Task<IActionResult> MinhasReservas()
+        {
+            var usuarioId = ObterUsuarioId();
+
+            var reservas = await _reservaService.ListarReservasPorUsuario(usuarioId);
+
+            return Ok(reservas);
+        }
+
+        [HttpGet("minhas/historico")]
+        public async Task<IActionResult> Historico()
+        {
+            var usuarioId = ObterUsuarioId();
+
+            var reservas = await _reservaService.ListarHistoricoPorUsuario(usuarioId);
+
+            return Ok(reservas);
+        }
+
         [HttpPut("{id:long}")]
         public async Task<IActionResult> Atualizar(
             long id,
@@ -128,6 +148,40 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
             }
 
             return usuarioId;
+        }
+
+        [HttpPatch("{id:long}/cancelar")]
+        public async Task<IActionResult> Cancelar(long id)
+        {
+            try
+            {
+                var usuarioId = ObterUsuarioId();
+
+                await _reservaService.CancelarReserva(id, usuarioId);
+
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    mensagem = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new
+                {
+                    mensagem = ex.Message
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new
+                {
+                    mensagem = ex.Message
+                });
+            }
         }
     }
 }

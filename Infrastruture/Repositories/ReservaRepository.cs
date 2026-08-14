@@ -82,6 +82,23 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 });
         }
 
+        public async Task<IEnumerable<Reserva>> ObterHistoricoPorUsuarioAsync(long usuarioId)
+        {
+            const string sql = """
+        SELECT id, data_checkin AS DataCheckIn, data_checkout AS DataCheckOut,
+            status, usuario_id AS UsuarioId, quarto_id AS QuartoId
+        FROM reservas
+        WHERE usuario_id = @UsuarioId
+          AND (
+              status = 2
+              OR data_checkout < CURRENT_TIMESTAMP
+          )
+        ORDER BY data_checkin DESC;
+        """;
+
+            return await _dbConnection.QueryAsync<Reserva>(sql,new { UsuarioId = usuarioId });
+        }
+
         public async Task<long> AdicionarAsync(Reserva reserva)
         {
             const string sql = """
@@ -128,6 +145,17 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             """;
 
             await _dbConnection.ExecuteAsync(sql,new { Id = id });
+        }
+
+        public async Task CancelarAsync(long id)
+        {
+            const string sql = """
+        UPDATE reservas
+        SET status = 2
+        WHERE id = @Id;
+        """;
+
+            await _dbConnection.ExecuteAsync(sql, new { Id = id });
         }
     }
 }

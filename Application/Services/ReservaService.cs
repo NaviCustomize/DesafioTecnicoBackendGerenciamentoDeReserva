@@ -77,11 +77,27 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
             return MapearParaDto(reserva);
         }
 
+        public async Task<IEnumerable<ReservaResponseDto>> ListarReservasPorUsuario(
+        long usuarioId)
+        {
+            var reservas = await _reservaRepository
+                .ObterPorUsuarioAsync(usuarioId);
+
+            return reservas.Select(MapearParaDto);
+        }
+
         public async Task<IEnumerable<ReservaResponseDto>> ListarReserva()
         {
             var reservas = await _reservaRepository.ObterTodosAsync();
 
             return reservas.Select(reserva => MapearParaDto(reserva));
+        }
+
+        public async Task<IEnumerable<ReservaResponseDto>>ListarHistoricoPorUsuario(long usuarioId)
+        {
+            var reservas = await _reservaRepository.ObterHistoricoPorUsuarioAsync(usuarioId);
+
+            return reservas.Select(MapearParaDto);
         }
 
         public async Task AtualizarReserva(
@@ -165,6 +181,28 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
                 reserva.UsuarioId,
                 reserva.QuartoId
             );
+        }
+
+        public async Task CancelarReserva(long id, long usuarioId)
+        {
+            var reserva = await _reservaRepository.ObterPorIdAsync(id);
+
+            if (reserva == null)
+                throw new KeyNotFoundException("Reserva não encontrada.");
+
+            if (reserva.UsuarioId != usuarioId)
+                throw new UnauthorizedAccessException(
+                    "Você não pode cancelar esta reserva.");
+
+            if (reserva.Status == StatusReserva.Cancelada)
+                throw new InvalidOperationException(
+                    "A reserva já está cancelada.");
+
+            if (reserva.Status == StatusReserva.Finalizada)
+                throw new InvalidOperationException(
+                    "Não é possível cancelar uma reserva finalizada.");
+
+            await _reservaRepository.CancelarAsync(id);
         }
     }
 }

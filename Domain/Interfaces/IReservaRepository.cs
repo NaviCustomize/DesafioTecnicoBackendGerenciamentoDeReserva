@@ -16,10 +16,14 @@ namespace SistemaGerenciamentoDeReserva.Domain.Interfaces
             DateTime dataCheckOut,
             long? reservaId = null);
 
+        Task<IEnumerable<Reserva>> ObterHistoricoPorUsuarioAsync(long usuarioId);
+
         Task<long> AdicionarAsync(Reserva reserva);
 
         Task AtualizarAsync(Reserva reserva);
 
         Task DeletarAsync(long id);
+
+        Task CancelarAsync(long id);
     }
 }
