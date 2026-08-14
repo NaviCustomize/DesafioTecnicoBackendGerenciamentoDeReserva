@@ -134,3 +134,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { } //torna a classe Program visível pro WebApplicationFactory<Program> usado nos testes de integração

@@ -23,7 +23,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 _quartoRepositoryMock.Object);
         }
 
-        // ---------- AdicionarReserva ----------
+        
 
         [Fact]
         public async Task AdicionarReserva_CheckInMaiorOuIgualCheckOut_LancaArgumentException()
@@ -151,7 +151,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 Times.Once);
         }
 
-        // ---------- AtualizarReserva ----------
+        
 
         [Fact]
         public async Task AtualizarReserva_CheckInMaiorOuIgualCheckOut_LancaArgumentException()
@@ -290,7 +290,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 Times.Once);
         }
 
-        // ---------- DeletarReserva ----------
+        
 
         [Fact]
         public async Task DeletarReserva_ReservaInexistente_LancaKeyNotFoundException()
@@ -348,7 +348,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 Times.Once);
         }
 
-        // ---------- CancelarReserva ----------
+        
 
         [Fact]
         public async Task CancelarReserva_ReservaInexistente_LancaKeyNotFoundException()
@@ -440,7 +440,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 Times.Once);
         }
 
-        // ---------- Consultas ----------
+        
 
         [Fact]
         public async Task BuscarPorId_ReservaInexistente_RetornaNull()

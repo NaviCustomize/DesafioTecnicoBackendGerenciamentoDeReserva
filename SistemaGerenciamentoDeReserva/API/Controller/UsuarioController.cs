@@ -18,6 +18,7 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Criar(
             [FromBody] CriarUsuarioDto dto)
         {

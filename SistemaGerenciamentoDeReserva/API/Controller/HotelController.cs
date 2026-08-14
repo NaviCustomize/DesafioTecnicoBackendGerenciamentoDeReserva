@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaGerenciamentoDeReserva.Application.DTOs.Hotel;
 using SistemaGerenciamentoDeReserva.Application.Interface;
 
@@ -16,6 +17,7 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Criar(
             [FromBody] CriarHotelDto dto)
         {
@@ -44,6 +46,7 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
         }
 
         [HttpPut("{id:long}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Atualizar(
             long id,
             [FromBody] AtualizarHotelDto dto)
@@ -61,6 +64,7 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
         }
 
         [HttpDelete("{id:long}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Deletar(long id)
         {
             try
