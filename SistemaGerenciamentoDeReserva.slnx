@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SistemaGerenciamentoDeReserva/SistemaGerenciamentoDeReserva.csproj" />
+  <Project Path="Tests/SistemaGerenciamentoDeReserva.Tests.csproj" />
+</Solution>

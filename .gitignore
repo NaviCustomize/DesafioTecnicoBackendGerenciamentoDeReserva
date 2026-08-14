@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Claude Code local settings
+.claude/
+
 # dotenv files
 .env
 
@@ -480,3 +483,5 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+# Documentos (requisitos, etc)
+*.pdf
