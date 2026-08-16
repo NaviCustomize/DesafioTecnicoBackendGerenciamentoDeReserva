@@ -1,23 +1,15 @@
--- =====================================================================
--- Sistema de Gerenciamento de Reservas
--- Script de criacao do banco de dados e carga inicial
---
--- O projeto usa Dapper, um micro ORM que nao cria nem versiona tabelas.
--- Por isso a estrutura do banco fica neste arquivo, executado manualmente.
---
+
 -- COMO USAR
---   1. Crie o banco:      CREATE DATABASE "Gerenciamento_reserva";
---   2. Rode este script:  psql -U postgres -d Gerenciamento_reserva -f criar_banco.sql
---
--- O script apaga as tabelas existentes antes de recriar, entao rodar de novo
--- devolve o banco ao estado inicial.
---
--- SENHAS DOS USUARIOS DE EXEMPLO
+--   1. Crie o banco:      
+CREATE DATABASE "Gerenciamento_reserva";
+
+--   2. Script:  psql -U postgres -d Gerenciamento_reserva -f criar_banco.sql
+
+-- SENHAS DOS USUARIOS PARA EXEMPLO
 --   teste.integracao@sgr.local    Teste@123      (Administrador)
---   larissa.andrade@hospede.com   Hospede@123
---   rafael.monteiro@hospede.com   Hospede@123
---   beatriz.campos@hospede.com    Hospede@123
--- =====================================================================
+--   felipe.santana@hospede.com   Hospede@123
+--   rodrigo.cabral@hospede.com   Hospede@123
+--   artur.almeida@hospede.com    Hospede@123
 
 DROP TABLE IF EXISTS notificacoes CASCADE;
 DROP TABLE IF EXISTS reservas CASCADE;
@@ -25,13 +17,7 @@ DROP TABLE IF EXISTS quartos CASCADE;
 DROP TABLE IF EXISTS hoteis CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
 
--- =====================================================================
--- ESTRUTURA
--- =====================================================================
-
--- Usuarios do sistema. role aceita 'User' ou 'Admin'.
--- excluido_em nulo significa conta ativa: a exclusao e logica, para o
--- historico de reservas continuar integro.
+-- Role De Usuarios: 'User' ou 'Admin'
 CREATE TABLE usuarios (
     id            serial PRIMARY KEY,
     nome          varchar(150) NOT NULL,
@@ -41,7 +27,7 @@ CREATE TABLE usuarios (
     role          varchar(20) NOT NULL DEFAULT 'User',
     criado_em     timestamp NOT NULL DEFAULT NOW(),
     atualizado_em timestamp,
-    excluido_em   timestamp
+    excluido_em   timestamp -- Nao exclui de verdade, e um delete logico
 );
 
 CREATE TABLE hoteis (
@@ -54,8 +40,8 @@ CREATE TABLE hoteis (
     excluido_em   timestamp
 );
 
--- tipo:   0 = Standard, 1 = Luxo, 2 = SuiteMaster
--- status: 0 = Disponivel, 1 = Reservado
+-- tipos:   0 = Standard, 1 = Luxo, 2 = SuiteMaster
+-- status:  0 = Disponivel, 1 = Reservado
 CREATE TABLE quartos (
     id              serial PRIMARY KEY,
     hotel_id        integer NOT NULL,
@@ -72,7 +58,7 @@ CREATE TABLE quartos (
 );
 
 -- status: 0 = Pendente, 1 = Confirmada, 2 = Cancelada, 3 = Finalizada
--- Os horarios seguem a politica do hotel: entrada as 14h, saida as 12h.
+-- horario de entrada as 14h, e de saida as 12h
 CREATE TABLE reservas (
     id            bigserial PRIMARY KEY,
     data_checkin  timestamp NOT NULL,
@@ -89,9 +75,9 @@ CREATE TABLE reservas (
         REFERENCES quartos(id) ON DELETE RESTRICT
 );
 
--- Eventos de reserva consumidos da fila do RabbitMQ.
+-- Eventos de reserva consumidos da fila do RabbitMQ
 -- Os dados do hospede e do hotel sao gravados como texto, e nao por chave
--- estrangeira, porque a notificacao e um retrato do momento em que ocorreu.
+-- estrangeira, porque a notificacao e um retrato do momento em que ocorreu
 CREATE TABLE notificacoes (
     id            serial PRIMARY KEY,
     reserva_id    bigint NOT NULL,
@@ -108,18 +94,14 @@ CREATE TABLE notificacoes (
     processado_em timestamp NOT NULL DEFAULT NOW()
 );
 
--- Indices parciais: as listagens sempre filtram por registro ativo.
+-- Indices parciais: as listagens sempre filtram por registro ativo
 CREATE INDEX ix_usuarios_ativos  ON usuarios (id) WHERE excluido_em IS NULL;
 CREATE INDEX ix_hoteis_ativos    ON hoteis (id)   WHERE excluido_em IS NULL;
 CREATE INDEX ix_quartos_ativos   ON quartos (id)  WHERE excluido_em IS NULL;
 CREATE INDEX ix_reservas_ativas  ON reservas (id) WHERE excluido_em IS NULL;
 CREATE INDEX ix_notificacoes_recentes ON notificacoes (processado_em DESC);
 
--- =====================================================================
--- CARGA INICIAL
--- =====================================================================
-
--- Os hashes sao BCrypt. Ver as senhas em texto no cabecalho deste arquivo.
+-- Como escrito no ReadMe, Uso do BCrypt para gerar um Hash da Senha
 INSERT INTO usuarios (nome, sobrenome, email, senha_hash, role) VALUES
     ('Teste',   'Integracao', 'teste.integracao@sgr.local',  '$2a$11$PoVnSIBXoHMKg7vtlJ0dzOjgJKL0X/3r1NC9rTL8ypw6CwXhf4mm.', 'Admin'),
     ('Larissa', 'Andrade',    'larissa.andrade@hospede.com', '$2a$11$/sC8CfqT5Eg1s77KAZxbkeR3WUWooKY6u8LOq2IoC8TzYH3iYium2', 'User'),
@@ -148,7 +130,7 @@ INSERT INTO quartos (hotel_id, numero, tipo, preco_por_noite, status) VALUES
     (3, 201, 2, 700.00, 1),
     (3, 202, 2, 700.00, 0);
 
--- Cobre os quatro estados possiveis: confirmada, cancelada e finalizada.
+-- Cobre os quatro estados possiveis: confirmada, cancelada e finalizada
 INSERT INTO reservas (data_checkin, data_checkout, status, usuario_id, quarto_id) VALUES
     ('2026-09-10 14:00:00', '2026-09-14 12:00:00', 1, 2,  1),
     ('2026-06-01 14:00:00', '2026-06-05 12:00:00', 1, 2,  9),
@@ -158,9 +140,8 @@ INSERT INTO reservas (data_checkin, data_checkout, status, usuario_id, quarto_id
     ('2026-07-15 14:00:00', '2026-07-18 12:00:00', 3, 4, 12),
     ('2026-09-01 14:00:00', '2026-09-04 12:00:00', 1, 4,  4);
 
--- =====================================================================
--- CONFERENCIA
--- =====================================================================
+
+-- Select de usuarios
 
 SELECT 'usuarios' AS tabela, count(*) AS registros FROM usuarios
 UNION ALL SELECT 'hoteis',   count(*) FROM hoteis
