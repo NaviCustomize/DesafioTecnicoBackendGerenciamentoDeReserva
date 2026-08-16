@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using SistemaGerenciamentoDeReserva.Application.DTOs.Login;
 using SistemaGerenciamentoDeReserva.Domain.Entity;
 using SistemaGerenciamentoDeReserva.Domain.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
@@ -24,7 +25,7 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
             _jwtService = jwtService;
         }
 
-        public async Task<string> LoginAsync(string email,string senha)
+        public async Task<LoginResponseDto> LoginAsync(string email,string senha)
         {
             var usuario = await _usuarioRepository.ObterPorEmailAsync(email);
 
@@ -37,7 +38,11 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
                 throw new UnauthorizedAccessException(
                     "Email ou senha inválidos.");
 
-            return _jwtService.GerarToken(usuario);
+            var token = _jwtService.GerarToken(usuario);
+
+
+            return new LoginResponseDto(
+                token, usuario.Id, usuario.Nome, usuario.Sobrenome, usuario.Role);
         }
     }
 }

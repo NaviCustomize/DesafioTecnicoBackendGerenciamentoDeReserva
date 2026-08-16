@@ -45,7 +45,9 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
             }
         }
 
+
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ObterTodos()
         {
             var reservas = await _reservaService.ListarReserva();
@@ -60,6 +62,15 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
 
             if (reserva is null)
                 return NotFound("Reserva não encontrada.");
+
+
+            if (!User.IsInRole("Admin") && reserva.UsuarioId != ObterUsuarioId())
+            {
+                return StatusCode(403, new
+                {
+                    mensagem = "Você só pode consultar as suas próprias reservas."
+                });
+            }
 
             return Ok(reserva);
         }

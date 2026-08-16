@@ -22,14 +22,11 @@ namespace SistemaGerenciamentoDeReserva.API.Controller
         {
             try
             {
-                var token = await _authService.LoginAsync(
+                var resultado = await _authService.LoginAsync(
                     dto.Email,
                     dto.Senha);
 
-                return Ok(new
-                {
-                    token
-                });
+                return Ok(resultado);
             }
             catch (UnauthorizedAccessException)
             {
