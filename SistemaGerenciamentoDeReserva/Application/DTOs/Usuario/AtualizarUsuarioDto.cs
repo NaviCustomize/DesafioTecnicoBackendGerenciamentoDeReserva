@@ -1,4 +1,4 @@
-﻿namespace SistemaGerenciamentoDeReserva.Application.DTOs.Usuario
+namespace SistemaGerenciamentoDeReserva.Application.DTOs.Usuario
 {
-    public record AtualizarUsuarioDto(string Nome, string Email);
+    public record AtualizarUsuarioDto(string Nome, string Sobrenome, string Email);
 }

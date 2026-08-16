@@ -18,10 +18,10 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         {
             const string sql =
                 """
-            SELECT id, nome, email, senha_hash AS SenhaHash,
+            SELECT id, nome, sobrenome, email, senha_hash AS SenhaHash,
             CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS ROLE
             FROM usuarios
-            WHERE id = @Id;
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Id = id });
@@ -31,8 +31,23 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         {
             const string sql =
                 """
-            SELECT id, nome, email, senha_hash AS SenhaHash,
+            SELECT id, nome, sobrenome, email, senha_hash AS SenhaHash,
             CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS ROLE
+            FROM usuarios
+            WHERE excluido_em IS NULL
+            ORDER BY id;
+            """;
+
+            return await _dbConnection.QueryAsync<Usuario>(sql);
+        }
+
+        public async Task<IEnumerable<Usuario>> ObterTodosIncluindoInativosAsync()
+        {
+            const string sql =
+                """
+            SELECT id, nome, sobrenome, email, senha_hash AS SenhaHash,
+            CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS Role,
+            excluido_em AS ExcluidoEm
             FROM usuarios
             ORDER BY id;
             """;
@@ -40,18 +55,46 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             return await _dbConnection.QueryAsync<Usuario>(sql);
         }
 
+        public async Task<Usuario?> ObterPorIdIncluindoInativoAsync(long id)
+        {
+            const string sql =
+                """
+            SELECT id, nome, sobrenome, email, senha_hash AS SenhaHash,
+            CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS Role,
+            excluido_em AS ExcluidoEm
+            FROM usuarios
+            WHERE id = @Id;
+            """;
+
+            return await _dbConnection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Id = id });
+        }
+
+        public async Task ReativarAsync(long id)
+        {
+            const string sql =
+                """
+            UPDATE usuarios
+            SET excluido_em = NULL,
+                atualizado_em = NOW()
+            WHERE id = @Id;
+            """;
+
+            await _dbConnection.ExecuteAsync(sql, new { Id = id });
+        }
+
         public async Task<long> AdicionarAsync(Usuario usuario)
         {
             const string sql =
                 """
-            INSERT INTO usuarios (nome, email, senha_hash, role)
-            VALUES (@Nome, @Email, @SenhaHash, @Role)
+            INSERT INTO usuarios (nome, sobrenome, email, senha_hash, role)
+            VALUES (@Nome, @Sobrenome, @Email, @SenhaHash, @Role)
             RETURNING id;
             """;
 
             return await _dbConnection.ExecuteScalarAsync<long>(sql, new
             {
                 usuario.Nome,
+                usuario.Sobrenome,
                 usuario.Email,
                 usuario.SenhaHash,
                 Role = usuario.Role.ToString()
@@ -64,9 +107,11 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 """
             UPDATE usuarios SET
             nome = @Nome,
+            sobrenome = @Sobrenome,
             email = @Email,
             senha_hash = @SenhaHash,
-            role = @Role
+            role = @Role,
+            atualizado_em = NOW()
             WHERE id = @Id;
             """;
 
@@ -74,18 +119,21 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             {
                 usuario.Id,
                 usuario.Nome,
+                usuario.Sobrenome,
                 usuario.Email,
                 usuario.SenhaHash,
                 Role = usuario.Role.ToString()
             });
         }
 
+
         public async Task DeletarAsync(long id)
         {
             const string sql =
                 """
-            DELETE FROM usuarios
-            WHERE id = @Id;
+            UPDATE usuarios
+            SET excluido_em = NOW()
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             await _dbConnection.ExecuteAsync(sql, new { Id = id });
@@ -95,10 +143,10 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         {
             const string sql =
                 """
-            SELECT id, nome, email, senha_hash AS SenhaHash,
+            SELECT id, nome, sobrenome, email, senha_hash AS SenhaHash,
             CASE WHEN role = 'Admin' THEN 1 ELSE 0 END AS Role
             FROM usuarios
-            WHERE email = @Email;
+            WHERE email = @Email AND excluido_em IS NULL;
             """;
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Usuario>(sql, new { Email = email });

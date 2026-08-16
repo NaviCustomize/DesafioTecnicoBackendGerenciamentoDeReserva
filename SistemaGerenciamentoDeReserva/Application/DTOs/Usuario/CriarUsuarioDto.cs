@@ -1,4 +1,4 @@
-﻿namespace SistemaGerenciamentoDeReserva.Application.DTOs.Usuario
+namespace SistemaGerenciamentoDeReserva.Application.DTOs.Usuario
 {
-    public record CriarUsuarioDto(string Nome, string Email, string Senha);
+    public record CriarUsuarioDto(string Nome, string Sobrenome, string Email, string Senha);
 }

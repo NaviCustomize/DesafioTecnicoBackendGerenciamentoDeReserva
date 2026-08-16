@@ -10,8 +10,20 @@ namespace SistemaGerenciamentoDeReserva.Application.Interface
 
         Task<IEnumerable<UsuarioResponseDto>> ListarUsuarios();
 
+
+        Task<IEnumerable<UsuarioAdminResponseDto>> ListarUsuariosParaAdmin();
+
+
+        Task ReativarUsuario(long id);
+
         Task AtualizarUsuario(long id, AtualizarUsuarioDto dto);
 
         Task DeletarUsuario(long id);
+
+
+        Task AlterarSenha(long id, AlterarSenhaDto dto);
+
+
+        Task EncerrarPropriaConta(long id, ConfirmarSenhaDto dto);
     }
 }
