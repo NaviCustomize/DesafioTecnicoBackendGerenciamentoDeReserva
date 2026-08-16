@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using SistemaGerenciamentoDeReserva.API.Middleware;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using SistemaGerenciamentoDeReserva.Application.Interface;
 using SistemaGerenciamentoDeReserva.Application.Services;
 using SistemaGerenciamentoDeReserva.Domain.Interfaces;
+using SistemaGerenciamentoDeReserva.Infrastruture.Messaging;
 using SistemaGerenciamentoDeReserva.Infrastruture.Repositories;
 using System.Data;
 using System.Text;
@@ -27,10 +29,11 @@ builder.Services.AddScoped<IDbConnection>(sp =>
         builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>(); //faz injecao de dependencia
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IHotelRepository, HotelRepository>();
 builder.Services.AddScoped<IQuartoRepository, QuartoRepository>();
 builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
+builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
 
 builder.Services.AddScoped<AuthService>();
 
@@ -41,6 +44,12 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IHotelService, HotelService>();
 builder.Services.AddScoped<IQuartoService, QuartoService>();
 builder.Services.AddScoped<IReservaService, ReservaService>();
+
+builder.Services.Configure<RabbitMqSettings>(
+    builder.Configuration.GetSection("RabbitMqSettings"));
+builder.Services.AddSingleton<IReservaNotificacaoPublisher, RabbitMqReservaNotificacaoPublisher>();
+builder.Services.AddHostedService<ReservaNotificacaoConsumer>();
+builder.Services.AddHostedService<LembreteCheckInWorker>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
@@ -118,7 +127,22 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+const string FrontendCorsPolicy = "FrontendCorsPolicy";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
+
+app.UseMiddleware<TratamentoDeErroMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -126,7 +150,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(FrontendCorsPolicy);
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -135,4 +164,4 @@ app.MapControllers();
 
 app.Run();
 
-public partial class Program { } //torna a classe Program visível pro WebApplicationFactory<Program> usado nos testes de integração
+public partial class Program { }
