@@ -8,26 +8,92 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
 {
     public class ReservaService : IReservaService
     {
+
+        private static readonly TimeSpan HoraDoCheckIn = new(14, 0, 0);
+        private static readonly TimeSpan HoraDoCheckOut = new(12, 0, 0);
+
         private readonly IReservaRepository _reservaRepository;
+        private readonly IUsuarioRepository _usuarioRepository;
+        private readonly IHotelRepository _hotelRepository;
         private readonly IQuartoRepository _quartoRepository;
+        private readonly IReservaNotificacaoPublisher _notificacaoPublisher;
 
         public ReservaService(
             IReservaRepository reservaRepository,
-            IQuartoRepository quartoRepository)
+            IQuartoRepository quartoRepository,
+            IUsuarioRepository usuarioRepository,
+            IHotelRepository hotelRepository,
+            IReservaNotificacaoPublisher notificacaoPublisher)
         {
             _reservaRepository = reservaRepository;
             _quartoRepository = quartoRepository;
+            _usuarioRepository = usuarioRepository;
+            _hotelRepository = hotelRepository;
+            _notificacaoPublisher = notificacaoPublisher;
         }
+
+
+        private async Task PublicarEventoAsync(Reserva reserva, string tipoEvento)
+        {
+            var hospede = string.Empty;
+            var hospedeEmail = string.Empty;
+            var hotel = string.Empty;
+            var quartoNumero = 0;
+
+            try
+            {
+                var usuario = await _usuarioRepository.ObterPorIdAsync(reserva.UsuarioId);
+
+                if (usuario is not null)
+                {
+                    hospede = usuario.NomeCompleto;
+                    hospedeEmail = usuario.Email;
+                }
+
+                var quarto = await _quartoRepository.ObterPorIdAsync(reserva.QuartoId);
+
+                if (quarto is not null)
+                {
+                    quartoNumero = quarto.Numero;
+
+                    var hotelDoQuarto = await _hotelRepository.ObterPorIdAsync(quarto.HotelId);
+                    hotel = hotelDoQuarto?.Nome ?? string.Empty;
+                }
+            }
+            catch (Exception)
+            {
+            }
+
+            await _notificacaoPublisher.PublicarAsync(new ReservaNotificacaoEvento(
+                reserva.Id,
+                reserva.UsuarioId,
+                reserva.QuartoId,
+                tipoEvento,
+                reserva.DataCheckIn,
+                reserva.DataCheckOut,
+                DateTime.UtcNow,
+                hospede,
+                hospedeEmail,
+                hotel,
+                quartoNumero));
+        }
+
+
+        private static DateTime ComHorarioPadrao(DateTime data, TimeSpan hora) =>
+            data.Date + hora;
 
         public async Task<ReservaResponseDto> AdicionarReserva(
             CriarReservaDto dto,
             long usuarioId)
         {
-            if (dto.DataCheckIn >= dto.DataCheckOut)
+            if (dto.DataCheckIn.Date >= dto.DataCheckOut.Date)
             {
                 throw new ArgumentException(
                     "A data de check-in deve ser anterior à data de check-out.");
             }
+
+            var checkIn = ComHorarioPadrao(dto.DataCheckIn, HoraDoCheckIn);
+            var checkOut = ComHorarioPadrao(dto.DataCheckOut, HoraDoCheckOut);
 
             var quarto = await _quartoRepository.ObterPorIdAsync(dto.QuartoId);
 
@@ -37,13 +103,8 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
                     "Quarto não encontrado.");
             }
 
-            if (quarto.Status != StatusQuarto.Disponivel)
-            {
-                throw new InvalidOperationException(
-                    "O quarto não está disponível.");
-            }
 
-            var conflito = await _reservaRepository.ExisteConflitoAsync(dto.QuartoId,dto.DataCheckIn,dto.DataCheckOut);
+            var conflito = await _reservaRepository.ExisteConflitoAsync(dto.QuartoId, checkIn, checkOut);
 
             if (conflito)
             {
@@ -55,14 +116,18 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
             {
                 UsuarioId = usuarioId,
                 QuartoId = dto.QuartoId,
-                DataCheckIn = dto.DataCheckIn,
-                DataCheckOut = dto.DataCheckOut,
+                DataCheckIn = checkIn,
+                DataCheckOut = checkOut,
                 Status = StatusReserva.Confirmada
             };
 
             var id = await _reservaRepository.AdicionarAsync(reserva);
 
             reserva.Id = id;
+
+            await SincronizarStatusDoQuarto(dto.QuartoId);
+
+            await PublicarEventoAsync(reserva, "Confirmada");
 
             return MapearParaDto(reserva);
         }
@@ -105,11 +170,14 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
             AtualizarReservaDto dto,
             long usuarioId)
         {
-            if (dto.DataCheckIn >= dto.DataCheckOut)
+            if (dto.DataCheckIn.Date >= dto.DataCheckOut.Date)
             {
                 throw new ArgumentException(
                     "A data de check-in deve ser anterior à data de check-out.");
             }
+
+            var checkIn = ComHorarioPadrao(dto.DataCheckIn, HoraDoCheckIn);
+            var checkOut = ComHorarioPadrao(dto.DataCheckOut, HoraDoCheckOut);
 
             var reserva = await _reservaRepository.ObterPorIdAsync(id);
 
@@ -133,8 +201,8 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
 
             var conflito = await _reservaRepository.ExisteConflitoAsync(
                     reserva.QuartoId,
-                    dto.DataCheckIn,
-                    dto.DataCheckOut,
+                    checkIn,
+                    checkOut,
                     reserva.Id);
 
             if (conflito)
@@ -143,10 +211,12 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
                     "Já existe uma reserva para este quarto neste período.");
             }
 
-            reserva.DataCheckIn = dto.DataCheckIn;
-            reserva.DataCheckOut = dto.DataCheckOut;
+            reserva.DataCheckIn = checkIn;
+            reserva.DataCheckOut = checkOut;
 
             await _reservaRepository.AtualizarAsync(reserva);
+
+            await PublicarEventoAsync(reserva, "Atualizada");
         }
 
         public async Task DeletarReserva(
@@ -203,6 +273,40 @@ namespace SistemaGerenciamentoDeReserva.Application.Services
                     "Não é possível cancelar uma reserva finalizada.");
 
             await _reservaRepository.CancelarAsync(id);
+
+            await SincronizarStatusDoQuarto(reserva.QuartoId);
+
+            await PublicarEventoAsync(reserva, "Cancelada");
+        }
+
+
+        private async Task SincronizarStatusDoQuarto(long quartoId)
+        {
+            var quarto = await _quartoRepository.ObterPorIdAsync(quartoId);
+
+            if (quarto is null)
+            {
+                return;
+            }
+
+            var reservas = await _reservaRepository.ObterPorQuartoAsync(quartoId);
+
+            var temReservaAtiva = reservas.Any(r =>
+                r.Status == StatusReserva.Pendente ||
+                r.Status == StatusReserva.Confirmada);
+
+            var novoStatus = temReservaAtiva
+                ? StatusQuarto.Reservado
+                : StatusQuarto.Disponivel;
+
+            if (quarto.Status == novoStatus)
+            {
+                return;
+            }
+
+            quarto.Status = novoStatus;
+
+            await _quartoRepository.AtualizarAsync(quarto);
         }
     }
 }

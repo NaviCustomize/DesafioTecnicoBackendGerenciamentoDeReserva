@@ -1,10 +1,8 @@
-﻿namespace SistemaGerenciamentoDeReserva.Domain.Enums
+namespace SistemaGerenciamentoDeReserva.Domain.Enums
 {
     public enum StatusQuarto
     {
         Disponivel,
-        Reservado,
-        Manutencao,
-        Bloqueado
+        Reservado
     }
 }

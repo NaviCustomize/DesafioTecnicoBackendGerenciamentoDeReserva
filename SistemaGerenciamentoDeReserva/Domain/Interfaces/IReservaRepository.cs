@@ -10,6 +10,9 @@ namespace SistemaGerenciamentoDeReserva.Domain.Interfaces
 
         Task<IEnumerable<Reserva>> ObterPorUsuarioAsync(long usuarioId);
 
+
+        Task<IEnumerable<Reserva>> ObterPorQuartoAsync(long quartoId);
+
         Task<bool> ExisteConflitoAsync(
             long quartoId,
             DateTime dataCheckIn,
