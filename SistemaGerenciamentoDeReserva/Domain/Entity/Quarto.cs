@@ -12,7 +12,7 @@ namespace SistemaGerenciamentoDeReserva.Domain.Entity
         public StatusQuarto Status { get; set; }
 
         public Quarto() { }
-        
+
         public Quarto(long hotelId, int numero, TipoQuarto tipo, decimal precoPorNoite, StatusQuarto status)
         {
             HotelId = hotelId;

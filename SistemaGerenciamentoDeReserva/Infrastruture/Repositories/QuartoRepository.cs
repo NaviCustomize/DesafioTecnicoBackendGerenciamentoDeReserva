@@ -17,12 +17,12 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         public async Task<Quarto?> ObterPorIdAsync(long id)
         {
             const string sql = """
-            SELECT 
+            SELECT
                 id, hotel_id AS HotelId, numero, tipo,
                 preco_por_noite AS PrecoPorNoite,
                 status
             FROM quartos
-            WHERE id = @Id;
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Quarto>(sql, new { Id = id });
@@ -36,6 +36,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 preco_por_noite AS PrecoPorNoite,
                 status
             FROM quartos
+            WHERE excluido_em IS NULL
             ORDER BY id;
             """;
 
@@ -76,18 +77,21 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 numero = @Numero,
                 tipo = @Tipo,
                 preco_por_noite = @PrecoPorNoite,
-                status = @Status
+                status = @Status,
+                atualizado_em = NOW()
             WHERE id = @Id;
             """;
 
             await _dbConnection.ExecuteAsync(sql, quarto);
         }
 
+
         public async Task DeletarAsync(long id)
         {
             const string sql = """
-            DELETE FROM quartos
-            WHERE id = @Id;
+            UPDATE quartos
+            SET excluido_em = NOW()
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             await _dbConnection.ExecuteAsync(sql, new { Id = id });

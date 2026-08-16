@@ -1,0 +1,37 @@
+-- Move a coluna sobrenome para logo após nome.
+--
+-- O PostgreSQL não tem comando para reordenar coluna existente — a única forma
+-- é recriar a tabela com a ordem desejada. Como reservas.usuario_id referencia
+-- usuarios(id) por FK, esvaziamos reservas antes de recriar usuarios: os dados
+-- eram de teste, sem valor de produção, então dropar é mais simples e mais
+-- seguro que tentar preservá-los.
+--
+-- Puramente cosmético — os repositórios já listam as colunas explicitamente
+-- em todo SELECT/INSERT, então a ordem física nunca afetou o comportamento
+-- da aplicação. Só muda o que aparece em \d usuarios ou num SELECT *.
+
+BEGIN;
+
+TRUNCATE reservas;
+
+DROP TABLE usuarios CASCADE;
+
+CREATE TABLE usuarios (
+    id serial PRIMARY KEY,
+    nome character varying(150) NOT NULL,
+    sobrenome character varying(150) NOT NULL DEFAULT ''::character varying,
+    email character varying(150) NOT NULL UNIQUE,
+    senha_hash character varying(255) NOT NULL,
+    role character varying(20) NOT NULL DEFAULT 'User'::character varying,
+    criado_em timestamp without time zone NOT NULL DEFAULT now(),
+    atualizado_em timestamp without time zone,
+    excluido_em timestamp without time zone
+);
+
+CREATE INDEX ix_usuarios_ativos ON usuarios (id) WHERE excluido_em IS NULL;
+
+ALTER TABLE reservas
+    ADD CONSTRAINT fk_reserva_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT;
+
+COMMIT;

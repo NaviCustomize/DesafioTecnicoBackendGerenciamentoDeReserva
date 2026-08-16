@@ -23,7 +23,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 localizacao,
                 descricao
             FROM hoteis
-            WHERE id = @Id;
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Hotel>(
@@ -40,6 +40,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 localizacao,
                 descricao
             FROM hoteis
+            WHERE excluido_em IS NULL
             ORDER BY id;
             """;
 
@@ -68,18 +69,21 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             SET
                 nome = @Nome,
                 localizacao = @Localizacao,
-                descricao = @Descricao
+                descricao = @Descricao,
+                atualizado_em = NOW()
             WHERE id = @Id;
             """;
 
             await _dbConnection.ExecuteAsync(sql, hotel);
         }
 
+
         public async Task DeletarAsync(long id)
         {
             const string sql = """
-            DELETE FROM hoteis
-            WHERE id = @Id;
+            UPDATE hoteis
+            SET excluido_em = NOW()
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             await _dbConnection.ExecuteAsync(

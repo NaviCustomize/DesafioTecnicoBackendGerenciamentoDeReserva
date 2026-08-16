@@ -21,7 +21,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 id,data_checkin AS DataCheckIn,data_checkout AS DataCheckOut,
                 status,usuario_id AS UsuarioId,quarto_id AS QuartoId
             FROM reservas
-            WHERE id = @Id;
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             return await _dbConnection.QueryFirstOrDefaultAsync<Reserva>(sql,new { Id = id });
@@ -34,6 +34,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 id,data_checkin AS DataCheckIn,data_checkout AS DataCheckOut,
                 status,usuario_id AS UsuarioId,quarto_id AS QuartoId
             FROM reservas
+            WHERE excluido_em IS NULL
             ORDER BY id;
             """;
 
@@ -47,7 +48,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 id,data_checkin AS DataCheckIn,data_checkout AS DataCheckOut,
                 status,usuario_id AS UsuarioId,quarto_id AS QuartoId
             FROM reservas
-            WHERE usuario_id = @UsuarioId
+            WHERE usuario_id = @UsuarioId AND excluido_em IS NULL
             ORDER BY data_checkin DESC;
             """;
 
@@ -65,6 +66,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 SELECT 1
                 FROM reservas
                 WHERE quarto_id = @QuartoId
+                  AND excluido_em IS NULL
                   AND status NOT IN (2)
                   AND data_checkin < @DataCheckOut
                   AND data_checkout > @DataCheckIn
@@ -82,6 +84,19 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
                 });
         }
 
+        public async Task<IEnumerable<Reserva>> ObterPorQuartoAsync(long quartoId)
+        {
+            const string sql = """
+            SELECT
+                id, data_checkin AS DataCheckIn, data_checkout AS DataCheckOut,
+                status, usuario_id AS UsuarioId, quarto_id AS QuartoId
+            FROM reservas
+            WHERE quarto_id = @QuartoId;
+            """;
+
+            return await _dbConnection.QueryAsync<Reserva>(sql, new { QuartoId = quartoId });
+        }
+
         public async Task<IEnumerable<Reserva>> ObterHistoricoPorUsuarioAsync(long usuarioId)
         {
             const string sql = """
@@ -89,6 +104,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             status, usuario_id AS UsuarioId, quarto_id AS QuartoId
         FROM reservas
         WHERE usuario_id = @UsuarioId
+          AND excluido_em IS NULL
           AND (
               status = 2
               OR data_checkout < CURRENT_TIMESTAMP
@@ -130,18 +146,21 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
             UPDATE reservas
             SET
                 data_checkin = @DataCheckIn,
-                data_checkout = @DataCheckOut
+                data_checkout = @DataCheckOut,
+                atualizado_em = NOW()
             WHERE id = @Id;
             """;
 
             await _dbConnection.ExecuteAsync(sql,reserva);
         }
 
+
         public async Task DeletarAsync(long id)
         {
             const string sql = """
-            DELETE FROM reservas
-            WHERE id = @Id;
+            UPDATE reservas
+            SET excluido_em = NOW()
+            WHERE id = @Id AND excluido_em IS NULL;
             """;
 
             await _dbConnection.ExecuteAsync(sql,new { Id = id });
@@ -151,7 +170,8 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Repositories
         {
             const string sql = """
         UPDATE reservas
-        SET status = 2
+        SET status = 2,
+            atualizado_em = NOW()
         WHERE id = @Id;
         """;
 
