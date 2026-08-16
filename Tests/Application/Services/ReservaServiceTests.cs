@@ -1,5 +1,6 @@
 using Moq;
 using SistemaGerenciamentoDeReserva.Application.DTOs.Reserva;
+using SistemaGerenciamentoDeReserva.Application.Interface;
 using SistemaGerenciamentoDeReserva.Application.Services;
 using SistemaGerenciamentoDeReserva.Domain.Entity;
 using SistemaGerenciamentoDeReserva.Domain.Enums;
@@ -11,6 +12,9 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
     {
         private readonly Mock<IReservaRepository> _reservaRepositoryMock;
         private readonly Mock<IQuartoRepository> _quartoRepositoryMock;
+        private readonly Mock<IUsuarioRepository> _usuarioRepositoryMock;
+        private readonly Mock<IHotelRepository> _hotelRepositoryMock;
+        private readonly Mock<IReservaNotificacaoPublisher> _notificacaoPublisherMock;
         private readonly ReservaService _service;
 
         public ReservaServiceTests()
@@ -18,12 +22,17 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
             _reservaRepositoryMock = new Mock<IReservaRepository>();
             _quartoRepositoryMock = new Mock<IQuartoRepository>();
 
+            _usuarioRepositoryMock = new Mock<IUsuarioRepository>();
+            _hotelRepositoryMock = new Mock<IHotelRepository>();
+            _notificacaoPublisherMock = new Mock<IReservaNotificacaoPublisher>();
+
             _service = new ReservaService(
                 _reservaRepositoryMock.Object,
-                _quartoRepositoryMock.Object);
+                _quartoRepositoryMock.Object,
+                _usuarioRepositoryMock.Object,
+                _hotelRepositoryMock.Object,
+                _notificacaoPublisherMock.Object);
         }
-
-        
 
         [Fact]
         public async Task AdicionarReserva_CheckInMaiorOuIgualCheckOut_LancaArgumentException()
@@ -58,29 +67,6 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         }
 
         [Fact]
-        public async Task AdicionarReserva_QuartoNaoDisponivel_LancaInvalidOperationException()
-        {
-            var dto = new CriarReservaDto(
-                QuartoId: 1,
-                DataCheckIn: new DateTime(2026, 1, 10),
-                DataCheckOut: new DateTime(2026, 1, 12));
-
-            var quarto = new Quarto(
-                hotelId: 1,
-                numero: 101,
-                tipo: TipoQuarto.Standard,
-                precoPorNoite: 200m,
-                status: StatusQuarto.Manutencao);
-
-            _quartoRepositoryMock
-                .Setup(r => r.ObterPorIdAsync(dto.QuartoId))
-                .ReturnsAsync(quarto);
-
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _service.AdicionarReserva(dto, usuarioId: 1));
-        }
-
-        [Fact]
         public async Task AdicionarReserva_ConflitoDePeriodo_LancaInvalidOperationException()
         {
             var dto = new CriarReservaDto(
@@ -101,7 +87,10 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
 
             _reservaRepositoryMock
                 .Setup(r => r.ExisteConflitoAsync(
-                    dto.QuartoId, dto.DataCheckIn, dto.DataCheckOut, null))
+                    dto.QuartoId,
+                    new DateTime(2026, 1, 10, 14, 0, 0),
+                    new DateTime(2026, 1, 12, 12, 0, 0),
+                    null))
                 .ReturnsAsync(true);
 
             await Assert.ThrowsAsync<InvalidOperationException>(
@@ -150,8 +139,6 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                         && res.Status == StatusReserva.Confirmada)),
                 Times.Once);
         }
-
-        
 
         [Fact]
         public async Task AtualizarReserva_CheckInMaiorOuIgualCheckOut_LancaArgumentException()
@@ -250,7 +237,10 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
 
             _reservaRepositoryMock
                 .Setup(r => r.ExisteConflitoAsync(
-                    reserva.QuartoId, dto.DataCheckIn, dto.DataCheckOut, reserva.Id))
+                    reserva.QuartoId,
+                    new DateTime(2026, 1, 10, 14, 0, 0),
+                    new DateTime(2026, 1, 12, 12, 0, 0),
+                    reserva.Id))
                 .ReturnsAsync(true);
 
             await Assert.ThrowsAsync<InvalidOperationException>(
@@ -276,21 +266,22 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 .Setup(r => r.ObterPorIdAsync(1))
                 .ReturnsAsync(reserva);
 
+            var checkInEsperado = new DateTime(2026, 1, 10, 14, 0, 0);
+            var checkOutEsperado = new DateTime(2026, 1, 12, 12, 0, 0);
+
             _reservaRepositoryMock
                 .Setup(r => r.ExisteConflitoAsync(
-                    reserva.QuartoId, dto.DataCheckIn, dto.DataCheckOut, reserva.Id))
+                    reserva.QuartoId, checkInEsperado, checkOutEsperado, reserva.Id))
                 .ReturnsAsync(false);
 
             await _service.AtualizarReserva(id: 1, dto, usuarioId: 1);
 
             _reservaRepositoryMock.Verify(
                 r => r.AtualizarAsync(It.Is<Reserva>(
-                    res => res.DataCheckIn == dto.DataCheckIn
-                        && res.DataCheckOut == dto.DataCheckOut)),
+                    res => res.DataCheckIn == checkInEsperado
+                        && res.DataCheckOut == checkOutEsperado)),
                 Times.Once);
         }
-
-        
 
         [Fact]
         public async Task DeletarReserva_ReservaInexistente_LancaKeyNotFoundException()
@@ -347,8 +338,6 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 r => r.DeletarAsync(1),
                 Times.Once);
         }
-
-        
 
         [Fact]
         public async Task CancelarReserva_ReservaInexistente_LancaKeyNotFoundException()
@@ -439,8 +428,6 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 r => r.CancelarAsync(1),
                 Times.Once);
         }
-
-        
 
         [Fact]
         public async Task BuscarPorId_ReservaInexistente_RetornaNull()

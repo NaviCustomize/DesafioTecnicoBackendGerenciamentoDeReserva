@@ -26,7 +26,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         [Fact]
         public async Task AdicionarUsuario_EmailJaExiste_LancaInvalidOperationException()
         {
-            var dto = new CriarUsuarioDto("João", "joao@email.com", "senha123");
+            var dto = new CriarUsuarioDto("João", "Silva", "joao@email.com", "senha123");
 
             _usuarioRepositoryMock
                 .Setup(r => r.ObterPorEmailAsync(dto.Email))
@@ -43,7 +43,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         [Fact]
         public async Task AdicionarUsuario_CenarioValido_HasheiaSenhaERetornaDto()
         {
-            var dto = new CriarUsuarioDto("João", "joao@email.com", "senha123");
+            var dto = new CriarUsuarioDto("João", "Silva", "joao@email.com", "senha123");
 
             _usuarioRepositoryMock
                 .Setup(r => r.ObterPorEmailAsync(dto.Email))
@@ -61,12 +61,89 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
 
             Assert.Equal(1L, resultado.Id);
             Assert.Equal(dto.Nome, resultado.Nome);
+            Assert.Equal(dto.Sobrenome, resultado.Sobrenome);
             Assert.Equal(dto.Email, resultado.Email);
 
             _usuarioRepositoryMock.Verify(
                 r => r.AdicionarAsync(It.Is<Usuario>(
-                    u => u.SenhaHash == "senha-hasheada")),
+                    u => u.SenhaHash == "senha-hasheada"
+                      && u.Sobrenome == "Silva")),
                 Times.Once);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task AdicionarUsuario_SemSobrenome_LancaArgumentException(string sobrenome)
+        {
+            var dto = new CriarUsuarioDto("João", sobrenome, "joao@email.com", "senha123");
+
+            _usuarioRepositoryMock
+                .Setup(r => r.ObterPorEmailAsync(dto.Email))
+                .ReturnsAsync((Usuario?)null);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.AdicionarUsuario(dto));
+
+            _usuarioRepositoryMock.Verify(
+                r => r.AdicionarAsync(It.IsAny<Usuario>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task AdicionarUsuario_ComEspacosSobrando_GravaNomeESobrenomeAparados()
+        {
+            var dto = new CriarUsuarioDto("  João  ", "  Silva  ", "joao@email.com", "senha123");
+
+            _usuarioRepositoryMock
+                .Setup(r => r.ObterPorEmailAsync(dto.Email))
+                .ReturnsAsync((Usuario?)null);
+
+            _senhaHasherMock.Setup(h => h.Hash(dto.Senha)).Returns("hash");
+
+            _usuarioRepositoryMock
+                .Setup(r => r.AdicionarAsync(It.IsAny<Usuario>()))
+                .ReturnsAsync(1L);
+
+            await _service.AdicionarUsuario(dto);
+
+            _usuarioRepositoryMock.Verify(
+                r => r.AdicionarAsync(It.Is<Usuario>(
+                    u => u.Nome == "João" && u.Sobrenome == "Silva")),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task AtualizarUsuario_SemSobrenome_LancaArgumentException()
+        {
+            var dto = new AtualizarUsuarioDto("João", "  ", "joao@email.com");
+
+            _usuarioRepositoryMock
+                .Setup(r => r.ObterPorIdAsync(1))
+                .ReturnsAsync(new Usuario("João", "joao@email.com", "hash", RoleUsuario.User) { Id = 1 });
+
+            _usuarioRepositoryMock
+                .Setup(r => r.ObterPorEmailAsync(dto.Email))
+                .ReturnsAsync((Usuario?)null);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.AtualizarUsuario(1, dto));
+
+            _usuarioRepositoryMock.Verify(
+                r => r.AtualizarAsync(It.IsAny<Usuario>()),
+                Times.Never);
+        }
+
+        [Theory]
+        [InlineData("Ana", "Ribeiro", "Ana Ribeiro")]
+        [InlineData("Ana", "", "Ana")]
+        [InlineData("Ana", "   ", "Ana")]
+        public void NomeCompleto_MontaConformeOSobrenome(
+            string nome, string sobrenome, string esperado)
+        {
+            var usuario = new Usuario { Nome = nome, Sobrenome = sobrenome };
+
+            Assert.Equal(esperado, usuario.NomeCompleto);
         }
 
         [Fact]
@@ -84,7 +161,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         [Fact]
         public async Task AtualizarUsuario_UsuarioInexistente_LancaKeyNotFoundException()
         {
-            var dto = new AtualizarUsuarioDto("João", "joao@email.com");
+            var dto = new AtualizarUsuarioDto("João", "Silva", "joao@email.com");
 
             _usuarioRepositoryMock
                 .Setup(r => r.ObterPorIdAsync(1))
@@ -97,7 +174,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         [Fact]
         public async Task AtualizarUsuario_EmailJaUsadoPorOutroUsuario_LancaInvalidOperationException()
         {
-            var dto = new AtualizarUsuarioDto("João", "outro@email.com");
+            var dto = new AtualizarUsuarioDto("João", "Silva", "outro@email.com");
 
             var usuario = new Usuario("João", "joao@email.com", "hash", RoleUsuario.User) { Id = 1 };
             var outroUsuario = new Usuario("Maria", dto.Email, "hash", RoleUsuario.User) { Id = 2 };
@@ -117,7 +194,7 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
         [Fact]
         public async Task AtualizarUsuario_CenarioValido_AtualizaNomeEEmail()
         {
-            var dto = new AtualizarUsuarioDto("João Atualizado", "joao.novo@email.com");
+            var dto = new AtualizarUsuarioDto("João Atualizado", "Silva Atualizado", "joao.novo@email.com");
 
             var usuario = new Usuario("João", "joao@email.com", "hash", RoleUsuario.User) { Id = 1 };
 

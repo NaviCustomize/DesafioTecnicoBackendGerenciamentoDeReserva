@@ -45,16 +45,18 @@ namespace SistemaGerenciamentoDeReserva.Tests.Integration
         protected static string TextoUnico(string prefixo) =>
             $"{prefixo}-{Guid.NewGuid():N}";
 
-        protected async Task<long> SeedUsuarioAsync(string nome, string email, string senha, string role)
+        protected async Task<long> SeedUsuarioAsync(
+            string nome, string email, string senha, string role, string sobrenome = "Sobrenome")
         {
             const string sql = """
-                INSERT INTO usuarios (nome, email, senha_hash, role)
-                VALUES (@Nome, @Email, @SenhaHash, @Role)
+                INSERT INTO usuarios (nome, sobrenome, email, senha_hash, role)
+                VALUES (@Nome, @Sobrenome, @Email, @SenhaHash, @Role)
                 RETURNING id;
                 """;
 
             return await ExecuteScalarAsync(sql,
                 new NpgsqlParameter("Nome", nome),
+                new NpgsqlParameter("Sobrenome", sobrenome),
                 new NpgsqlParameter("Email", email),
                 new NpgsqlParameter("SenhaHash", BCrypt.Net.BCrypt.HashPassword(senha)),
                 new NpgsqlParameter("Role", role));

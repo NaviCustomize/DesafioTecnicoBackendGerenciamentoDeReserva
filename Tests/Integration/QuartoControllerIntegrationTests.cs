@@ -5,7 +5,6 @@ using SistemaGerenciamentoDeReserva.Domain.Enums;
 
 namespace SistemaGerenciamentoDeReserva.Tests.Integration
 {
-    // o metodo get e publica, escrita post, put e delete tem que ter o token de Admin
     public class QuartoControllerIntegrationTests : IntegrationTestBase
     {
         public QuartoControllerIntegrationTests(CustomWebApplicationFactory factory) : base(factory)
@@ -103,6 +102,31 @@ namespace SistemaGerenciamentoDeReserva.Tests.Integration
 
             var busca = await Client.GetAsync($"/quartos/{idQuarto}");
             Assert.Equal(HttpStatusCode.NotFound, busca.StatusCode);
+        }
+
+        [Fact]
+        public async Task Deletar_QuartoComReservas_Retorna204ESomeDaListagem()
+        {
+            var idHotel = await SeedHotelAsync(TextoUnico("Hotel"), "Curitiba");
+            var idQuarto = await SeedQuartoAsync(idHotel, 707, TipoQuarto.Luxo, 400m, StatusQuarto.Disponivel);
+
+            var idDono = await SeedUsuarioAsync("Dono", EmailUnico("dono-quarto-del"), "Senha123!", "User");
+            await SeedReservaAsync(
+                idDono, idQuarto,
+                new DateTime(2026, 10, 1), new DateTime(2026, 10, 4),
+                StatusReserva.Confirmada);
+
+            await AutenticarComoAdminAsync();
+
+            var response = await Client.DeleteAsync($"/quartos/{idQuarto}");
+
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+            var busca = await Client.GetAsync($"/quartos/{idQuarto}");
+            Assert.Equal(HttpStatusCode.NotFound, busca.StatusCode);
+
+            var lista = await Client.GetFromJsonAsync<List<QuartoResponseDto>>("/quartos", JsonOptions);
+            Assert.DoesNotContain(lista!, q => q.Id == idQuarto);
         }
     }
 }

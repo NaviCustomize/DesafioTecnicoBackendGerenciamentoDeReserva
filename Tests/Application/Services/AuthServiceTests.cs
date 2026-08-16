@@ -74,9 +74,10 @@ namespace SistemaGerenciamentoDeReserva.Tests.Application.Services
                 .Setup(j => j.GerarToken(usuario))
                 .Returns("token-jwt-gerado");
 
-            var token = await _service.LoginAsync(usuario.Email, "senha123");
+            var resultado = await _service.LoginAsync(usuario.Email, "senha123");
 
-            Assert.Equal("token-jwt-gerado", token);
+            Assert.Equal("token-jwt-gerado", resultado.Token);
+            Assert.Equal(usuario.Nome, resultado.Nome);
         }
     }
 }

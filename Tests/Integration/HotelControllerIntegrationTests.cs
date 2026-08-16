@@ -4,7 +4,6 @@ using SistemaGerenciamentoDeReserva.Application.DTOs.Hotel;
 
 namespace SistemaGerenciamentoDeReserva.Tests.Integration
 {
-    // o metodo get e publica, escrita post, put e delete tem que ter o token de Admin
     public class HotelControllerIntegrationTests : IntegrationTestBase
     {
         public HotelControllerIntegrationTests(CustomWebApplicationFactory factory) : base(factory)
