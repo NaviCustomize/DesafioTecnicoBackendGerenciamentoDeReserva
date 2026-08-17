@@ -85,7 +85,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Messaging
         private async Task DeclararTopologiaAsync(CancellationToken stoppingToken)
         {
             await _channel!.ExchangeDeclareAsync(
-                exchange: ReservaMessagingConstantes.Exchange,
+                exchange: _settings.Exchange,
                 type: ExchangeType.Topic,
                 durable: true,
                 cancellationToken: stoppingToken);
@@ -123,7 +123,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Messaging
 
             await _channel.QueueBindAsync(
                 queue: ReservaMessagingConstantes.Queue,
-                exchange: ReservaMessagingConstantes.Exchange,
+                exchange: _settings.Exchange,
                 routingKey: ReservaMessagingConstantes.RoutingKeyPattern,
                 cancellationToken: stoppingToken);
         }

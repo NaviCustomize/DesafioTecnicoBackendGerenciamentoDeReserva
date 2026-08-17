@@ -31,7 +31,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Messaging
                 await using var channel = await connection.CreateChannelAsync();
 
                 await channel.ExchangeDeclareAsync(
-                    exchange: ReservaMessagingConstantes.Exchange,
+                    exchange: _settings.Exchange,
                     type: ExchangeType.Topic,
                     durable: true);
 
@@ -45,7 +45,7 @@ namespace SistemaGerenciamentoDeReserva.Infrastruture.Messaging
                 };
 
                 await channel.BasicPublishAsync(
-                    exchange: ReservaMessagingConstantes.Exchange,
+                    exchange: _settings.Exchange,
                     routingKey: routingKey,
                     mandatory: false,
                     basicProperties: properties,
