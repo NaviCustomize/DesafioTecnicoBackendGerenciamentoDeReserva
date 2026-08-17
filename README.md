@@ -16,7 +16,7 @@ No frontend, a comunicação com a API fica concentrada na camada de serviços: 
 * **Controle de Acesso:** autenticação por JWT com o papel dentro do token. Endpoints administrativos exigem papel de Admin, e há verificação de propriedade para que um usuário não leia nem altere dados de outro.
 * **Mensageria:** integração com RabbitMQ para processamento assíncrono dos eventos de reserva, com exchange do tipo topic, confirmação manual, dead-letter queue e um worker de lembrete de check-in.
 * **Persistência:** repositórios implementados com Dapper para Usuários, Hotéis, Quartos, Reservas e Notificações, todos com exclusão lógica e colunas de auditoria.
-* **Qualidade:** 109 testes, unitários nos serviços de domínio com Moq e de integração nos endpoints com WebApplicationFactory. Uso de DTOs para transferência de dados e middleware global de tratamento de erro.
+* **Qualidade:** 172 testes com xUnit, cobrindo os três alvos: serviços de domínio com Moq, repositórios contra banco de teste e a mensageria, além dos testes de integração nos endpoints com WebApplicationFactory e HttpClient. Uso de DTOs para transferência de dados e middleware global de tratamento de erro.
 * **Frontend:** interface em React 19 com TypeScript, usando Vite, Axios, React Router com rotas protegidas por papel, React-Bootstrap e styled-components.
 * **Acessibilidade:** VLibras, alto contraste, ajuste de fonte, navegação por teclado e lint de acessibilidade no oxlint.
 
@@ -51,6 +51,24 @@ dotnet run --launch-profile http
 ```
 
 A API fica em http://localhost:5075 e o Swagger em http://localhost:5075/swagger.
+
+### Testes
+
+Os testes usam um banco separado. Crie com o mesmo script e configure os secrets do projeto de testes:
+
+```bash
+psql -U postgres -c 'CREATE DATABASE "Gerenciamento_reserva_test"'
+```
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=Gerenciamento_reserva_test;Username=postgres;Password=SUA_SENHA" --project Tests
+```
+
+```bash
+dotnet test
+```
+
+São 172 testes. Os de mensageria que precisam do broker se ignoram sozinhos quando o RabbitMQ não está no ar, então a suíte roda verde mesmo sem ele.
 
 ### Frontend
 
