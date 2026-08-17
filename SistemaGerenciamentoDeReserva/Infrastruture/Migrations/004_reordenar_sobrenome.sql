@@ -1,15 +1,3 @@
--- Move a coluna sobrenome para logo após nome.
---
--- O PostgreSQL não tem comando para reordenar coluna existente — a única forma
--- é recriar a tabela com a ordem desejada. Como reservas.usuario_id referencia
--- usuarios(id) por FK, esvaziamos reservas antes de recriar usuarios: os dados
--- eram de teste, sem valor de produção, então dropar é mais simples e mais
--- seguro que tentar preservá-los.
---
--- Puramente cosmético — os repositórios já listam as colunas explicitamente
--- em todo SELECT/INSERT, então a ordem física nunca afetou o comportamento
--- da aplicação. Só muda o que aparece em \d usuarios ou num SELECT *.
-
 BEGIN;
 
 TRUNCATE reservas;
